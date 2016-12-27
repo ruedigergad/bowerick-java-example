@@ -56,21 +56,23 @@ public class SimpleMultiTransportTest {
 	}
 
 	@Test
-	public void sendAndReceiveStringViaJson() throws InterruptedException {
+	public void sendAndReceiveStringViaJson() throws Exception {
 		final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
 
 		final List<StringBuffer> received = new ArrayList<>();
+		List<AutoCloseable> consumers = new ArrayList<>();
 		for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
 			received.add(new StringBuffer());
 			final int idx = i;
 
-			JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
+			consumers.add(
+					JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
 
-				public void processData(Object data) {
-					received.get(idx).append((String) data);
-					cdl.countDown();
-				}
-			}, 1);
+						public void processData(Object data) {
+							received.get(idx).append((String) data);
+							cdl.countDown();
+						}
+					}, 1));
 		}
 
 		JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
@@ -81,24 +83,31 @@ public class SimpleMultiTransportTest {
 		for (int i = 0; i < received.size(); i++) {
 			assertEquals("Test String", received.get(i).toString());
 		}
+
+		producer.close();
+		for (AutoCloseable consumer : consumers) {
+			consumer.close();
+		}
 	}
 
 	@Test
-	public void sendAndReceiveListViaJson() throws InterruptedException {
+	public void sendAndReceiveListViaJson() throws Exception {
 		final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
 
 		final List<List<Object>> received = new ArrayList<>();
+		List<AutoCloseable> consumers = new ArrayList<>();
 		for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
 			received.add(new ArrayList<Object>());
 			final int idx = i;
 
-			JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
+			consumers.add(
+					JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
 
-				public void processData(Object data) {
-					received.get(idx).addAll((List<?>) JavaUtils.convertFromClojureToJava(data));
-					cdl.countDown();
-				}
-			}, 1);
+						public void processData(Object data) {
+							received.get(idx).addAll((List<?>) JavaUtils.convertFromClojureToJava(data));
+							cdl.countDown();
+						}
+					}, 1));
 		}
 
 		JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
@@ -117,24 +126,31 @@ public class SimpleMultiTransportTest {
 			assertNotSame(testData, received.get(i));
 			assertEquals(testData, received.get(i));
 		}
+
+		producer.close();
+		for (AutoCloseable consumer : consumers) {
+			consumer.close();
+		}
 	}
 
 	@Test
-	public void sendAndReceiveMapViaJson() throws InterruptedException {
+	public void sendAndReceiveMapViaJson() throws Exception {
 		final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
 		final List<Map<String, Object>> received = new ArrayList<>();
 
+		List<AutoCloseable> consumers = new ArrayList<>();
 		for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
 			received.add(new HashMap<String, Object>());
 			final int idx = i;
 
-			JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
+			consumers.add(
+					JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
 
-				public void processData(Object data) {
-					received.get(idx).putAll((Map<String, ?>) JavaUtils.convertFromClojureToJava(data));
-					cdl.countDown();
-				}
-			}, 1);
+						public void processData(Object data) {
+							received.get(idx).putAll((Map<String, ?>) JavaUtils.convertFromClojureToJava(data));
+							cdl.countDown();
+						}
+					}, 1));
 		}
 
 		JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
@@ -152,6 +168,11 @@ public class SimpleMultiTransportTest {
 		for (int i = 0; i < received.size(); i++) {
 			assertNotSame(testData, received.get(i));
 			assertEquals(testData, received.get(i));
+		}
+
+		producer.close();
+		for (AutoCloseable consumer : consumers) {
+			consumer.close();
 		}
 	}
 }

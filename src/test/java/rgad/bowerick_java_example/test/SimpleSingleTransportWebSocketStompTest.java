@@ -35,14 +35,14 @@ import bowerick.JmsProducer;
  */
 public class SimpleSingleTransportWebSocketStompTest {
 
-	private static final String STOMP_TRANSPORT_URL = "ws://127.0.0.1:1701";
+	private static final String TRANSPORT_URL = "ws://127.0.0.1:1701";
 	private static final String TEST_TOPIC = "/topic/test.topic.foo";
 
 	private JmsController jmsController;
 
 	@Before
 	public void setUp() {
-		jmsController = new JmsController(STOMP_TRANSPORT_URL);
+		jmsController = new JmsController(TRANSPORT_URL);
 		jmsController.startEmbeddedBroker();
 	}
 
@@ -52,11 +52,11 @@ public class SimpleSingleTransportWebSocketStompTest {
 	}
 
 	@Test
-	public void sendAndReceiveStringViaJson() throws InterruptedException {
+	public void sendAndReceiveStringViaJson() throws Exception {
 		final CountDownLatch cdl = new CountDownLatch(1);
 		final StringBuffer received = new StringBuffer();
 
-		JmsController.createJsonConsumer(STOMP_TRANSPORT_URL, TEST_TOPIC, new JmsConsumerCallback() {
+		AutoCloseable consumer = JmsController.createJsonConsumer(TRANSPORT_URL, TEST_TOPIC, new JmsConsumerCallback() {
 
 			public void processData(Object data) {
 				received.append((String) data);
@@ -64,20 +64,23 @@ public class SimpleSingleTransportWebSocketStompTest {
 			}
 		}, 1);
 
-		JmsProducer producer = JmsController.createJsonProducer(STOMP_TRANSPORT_URL, TEST_TOPIC, 1);
+		JmsProducer producer = JmsController.createJsonProducer(TRANSPORT_URL, TEST_TOPIC, 1);
 		producer.sendData("Test String");
 
 		cdl.await();
 
 		assertEquals("Test String", received.toString());
+
+		producer.close();
+		consumer.close();
 	}
 
 	@Test
-	public void sendAndReceiveListViaJson() throws InterruptedException {
+	public void sendAndReceiveListViaJson() throws Exception {
 		final CountDownLatch cdl = new CountDownLatch(1);
 		final List<Object> received = new ArrayList<>();
 
-		JmsController.createJsonConsumer(STOMP_TRANSPORT_URL, TEST_TOPIC, new JmsConsumerCallback() {
+		AutoCloseable consumer = JmsController.createJsonConsumer(TRANSPORT_URL, TEST_TOPIC, new JmsConsumerCallback() {
 
 			public void processData(Object data) {
 				received.addAll((List<?>) data);
@@ -85,7 +88,7 @@ public class SimpleSingleTransportWebSocketStompTest {
 			}
 		}, 1);
 
-		JmsProducer producer = JmsController.createJsonProducer(STOMP_TRANSPORT_URL, TEST_TOPIC, 1);
+		JmsProducer producer = JmsController.createJsonProducer(TRANSPORT_URL, TEST_TOPIC, 1);
 
 		List<Object> testData = new ArrayList<>();
 		testData.add("Test String");
@@ -99,14 +102,17 @@ public class SimpleSingleTransportWebSocketStompTest {
 
 		assertNotSame(testData, received);
 		assertEquals(testData, received);
+
+		producer.close();
+		consumer.close();
 	}
 
 	@Test
-	public void sendAndReceiveMapViaJson() throws InterruptedException {
+	public void sendAndReceiveMapViaJson() throws Exception {
 		final CountDownLatch cdl = new CountDownLatch(1);
 		final Map<String, Object> received = new HashMap<>();
 
-		JmsController.createJsonConsumer(STOMP_TRANSPORT_URL, TEST_TOPIC, new JmsConsumerCallback() {
+		AutoCloseable consumer = JmsController.createJsonConsumer(TRANSPORT_URL, TEST_TOPIC, new JmsConsumerCallback() {
 
 			public void processData(Object data) {
 				received.putAll((Map<String, ?>) data);
@@ -114,7 +120,7 @@ public class SimpleSingleTransportWebSocketStompTest {
 			}
 		}, 1);
 
-		JmsProducer producer = JmsController.createJsonProducer(STOMP_TRANSPORT_URL, TEST_TOPIC, 1);
+		JmsProducer producer = JmsController.createJsonProducer(TRANSPORT_URL, TEST_TOPIC, 1);
 
 		Map<String, Object> testData = new HashMap<>();
 		testData.put("SomeString", "Test String");
@@ -128,5 +134,8 @@ public class SimpleSingleTransportWebSocketStompTest {
 
 		assertNotSame(testData, received);
 		assertEquals(testData, received);
+
+		producer.close();
+		consumer.close();
 	}
 }
