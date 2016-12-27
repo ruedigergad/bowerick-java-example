@@ -38,141 +38,141 @@ import clj_assorted_utils.JavaUtils;
  */
 public class SimpleMultiTransportTest {
 
-	private static final List<String> TRANSPORT_URLS = Collections.unmodifiableList(Arrays.asList(new String[] {
-			"stomp://127.0.0.1:1701", "tcp://127.0.0.1:1864", "ws://127.0.0.1:8472", "mqtt://127.0.0.1:2000" }));
-	private static final String TEST_TOPIC = "/topic/test.topic.foo";
+    private static final List<String> TRANSPORT_URLS = Collections.unmodifiableList(Arrays.asList(new String[] {
+            "stomp://127.0.0.1:1701", "tcp://127.0.0.1:1864", "ws://127.0.0.1:8472", "mqtt://127.0.0.1:2000" }));
+    private static final String TEST_TOPIC = "/topic/test.topic.foo";
 
-	private JmsController jmsController;
+    private JmsController jmsController;
 
-	@Before
-	public void setUp() {
-		jmsController = new JmsController(TRANSPORT_URLS);
-		jmsController.startEmbeddedBroker();
-	}
+    @Before
+    public void setUp() {
+        jmsController = new JmsController(TRANSPORT_URLS);
+        jmsController.startEmbeddedBroker();
+    }
 
-	@After
-	public void tearDown() {
-		jmsController.stopEmbeddedBroker();
-	}
+    @After
+    public void tearDown() {
+        jmsController.stopEmbeddedBroker();
+    }
 
-	@Test
-	public void sendAndReceiveStringViaJson() throws Exception {
-		final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
+    @Test
+    public void sendAndReceiveStringViaJson() throws Exception {
+        final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
 
-		final List<StringBuffer> received = new ArrayList<>();
-		List<AutoCloseable> consumers = new ArrayList<>();
-		for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
-			received.add(new StringBuffer());
-			final int idx = i;
+        final List<StringBuffer> received = new ArrayList<>();
+        List<AutoCloseable> consumers = new ArrayList<>();
+        for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
+            received.add(new StringBuffer());
+            final int idx = i;
 
-			consumers.add(
-					JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
+            consumers.add(
+                    JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
 
-						public void processData(Object data) {
-							received.get(idx).append((String) data);
-							cdl.countDown();
-						}
-					}, 1));
-		}
+                        public void processData(Object data) {
+                            received.get(idx).append((String) data);
+                            cdl.countDown();
+                        }
+                    }, 1));
+        }
 
-		JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
-		producer.sendData("Test String");
+        JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
+        producer.sendData("Test String");
 
-		cdl.await();
+        cdl.await();
 
-		for (int i = 0; i < received.size(); i++) {
-			assertEquals("Test String", received.get(i).toString());
-		}
+        for (int i = 0; i < received.size(); i++) {
+            assertEquals("Test String", received.get(i).toString());
+        }
 
-		producer.close();
-		for (AutoCloseable consumer : consumers) {
-			consumer.close();
-		}
-	}
+        producer.close();
+        for (AutoCloseable consumer : consumers) {
+            consumer.close();
+        }
+    }
 
-	@Test
-	public void sendAndReceiveListViaJson() throws Exception {
-		final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
+    @Test
+    public void sendAndReceiveListViaJson() throws Exception {
+        final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
 
-		final List<List<Object>> received = new ArrayList<>();
-		List<AutoCloseable> consumers = new ArrayList<>();
-		for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
-			received.add(new ArrayList<Object>());
-			final int idx = i;
+        final List<List<Object>> received = new ArrayList<>();
+        List<AutoCloseable> consumers = new ArrayList<>();
+        for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
+            received.add(new ArrayList<Object>());
+            final int idx = i;
 
-			consumers.add(
-					JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
+            consumers.add(
+                    JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
 
-						public void processData(Object data) {
-							received.get(idx).addAll((List<?>) JavaUtils.convertFromClojureToJava(data));
-							cdl.countDown();
-						}
-					}, 1));
-		}
+                        public void processData(Object data) {
+                            received.get(idx).addAll((List<?>) JavaUtils.convertFromClojureToJava(data));
+                            cdl.countDown();
+                        }
+                    }, 1));
+        }
 
-		JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
+        JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
 
-		List<Object> testData = new ArrayList<>();
-		testData.add("Test String");
-		testData.add(42);
-		testData.add(1.23456789);
-		testData.add(true);
+        List<Object> testData = new ArrayList<>();
+        testData.add("Test String");
+        testData.add(42);
+        testData.add(1.23456789);
+        testData.add(true);
 
-		producer.sendData(testData);
+        producer.sendData(testData);
 
-		cdl.await();
+        cdl.await();
 
-		for (int i = 0; i < received.size(); i++) {
-			assertNotSame(testData, received.get(i));
-			assertEquals(testData, received.get(i));
-		}
+        for (int i = 0; i < received.size(); i++) {
+            assertNotSame(testData, received.get(i));
+            assertEquals(testData, received.get(i));
+        }
 
-		producer.close();
-		for (AutoCloseable consumer : consumers) {
-			consumer.close();
-		}
-	}
+        producer.close();
+        for (AutoCloseable consumer : consumers) {
+            consumer.close();
+        }
+    }
 
-	@Test
-	public void sendAndReceiveMapViaJson() throws Exception {
-		final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
-		final List<Map<String, Object>> received = new ArrayList<>();
+    @Test
+    public void sendAndReceiveMapViaJson() throws Exception {
+        final CountDownLatch cdl = new CountDownLatch(TRANSPORT_URLS.size());
+        final List<Map<String, Object>> received = new ArrayList<>();
 
-		List<AutoCloseable> consumers = new ArrayList<>();
-		for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
-			received.add(new HashMap<String, Object>());
-			final int idx = i;
+        List<AutoCloseable> consumers = new ArrayList<>();
+        for (int i = 0; i < TRANSPORT_URLS.size(); i++) {
+            received.add(new HashMap<String, Object>());
+            final int idx = i;
 
-			consumers.add(
-					JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
+            consumers.add(
+                    JmsController.createJsonConsumer(TRANSPORT_URLS.get(idx), TEST_TOPIC, new JmsConsumerCallback() {
 
-						public void processData(Object data) {
-							received.get(idx).putAll((Map<String, ?>) JavaUtils.convertFromClojureToJava(data));
-							cdl.countDown();
-						}
-					}, 1));
-		}
+                        public void processData(Object data) {
+                            received.get(idx).putAll((Map<String, ?>) JavaUtils.convertFromClojureToJava(data));
+                            cdl.countDown();
+                        }
+                    }, 1));
+        }
 
-		JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
+        JmsProducer producer = JmsController.createJsonProducer("stomp://127.0.0.1:1701", TEST_TOPIC, 1);
 
-		Map<String, Object> testData = new HashMap<>();
-		testData.put("SomeString", "Test String");
-		testData.put("SomeInt", 42);
-		testData.put("SomeFloat", 1.23456789);
-		testData.put("SomeBoolean", true);
+        Map<String, Object> testData = new HashMap<>();
+        testData.put("SomeString", "Test String");
+        testData.put("SomeInt", 42);
+        testData.put("SomeFloat", 1.23456789);
+        testData.put("SomeBoolean", true);
 
-		producer.sendData(testData);
+        producer.sendData(testData);
 
-		cdl.await();
+        cdl.await();
 
-		for (int i = 0; i < received.size(); i++) {
-			assertNotSame(testData, received.get(i));
-			assertEquals(testData, received.get(i));
-		}
+        for (int i = 0; i < received.size(); i++) {
+            assertNotSame(testData, received.get(i));
+            assertEquals(testData, received.get(i));
+        }
 
-		producer.close();
-		for (AutoCloseable consumer : consumers) {
-			consumer.close();
-		}
-	}
+        producer.close();
+        for (AutoCloseable consumer : consumers) {
+            consumer.close();
+        }
+    }
 }
